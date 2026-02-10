@@ -9,7 +9,6 @@ use App\Models\Vote;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -24,6 +23,8 @@ class PollVote extends Component
     public bool $hasVoted = false;
 
     public ?int $votedOptionId = null;
+
+    public bool $showLoginModal = false;
 
     /**
      * Mount the component with the poll resolved by slug.
@@ -43,6 +44,13 @@ class PollVote extends Component
      */
     public function vote(): void
     {
+        if (! Auth::check()) {
+            $this->storeIntendedUrl();
+            $this->showLoginModal = true;
+
+            return;
+        }
+
         $this->validate([
             'selectedOption' => ['required', 'integer', 'exists:poll_options,id'],
         ]);
@@ -60,33 +68,13 @@ class PollVote extends Component
         }
 
         try {
-            $voteCreated = DB::transaction(function (): bool {
-                $alreadyVoted = Vote::query()
-                    ->where('poll_id', $this->poll->id)
-                    ->where(function ($query): void {
-                        if (Auth::check()) {
-                            $query->where('user_id', Auth::id());
-                        } else {
-                            $query->where('ip_address', request()->ip());
-                        }
-                    })
-                    ->exists();
-
-                if ($alreadyVoted) {
-                    return false;
-                }
-
-                Vote::query()->create([
-                    'poll_id' => $this->poll->id,
-                    'poll_option_id' => $this->selectedOption,
-                    'user_id' => Auth::id(),
-                    'ip_address' => request()->ip(),
-                ]);
-
-                return true;
-            });
+            Vote::query()->create([
+                'poll_id' => $this->poll->id,
+                'poll_option_id' => $this->selectedOption,
+                'user_id' => Auth::id(),
+                'ip_address' => request()->ip(),
+            ]);
         } catch (QueryException) {
-            $this->hasVoted = true;
             $this->checkExistingVote();
 
             return;
@@ -94,10 +82,6 @@ class PollVote extends Component
 
         $this->hasVoted = true;
         $this->votedOptionId = $this->selectedOption;
-
-        if (! $voteCreated) {
-            return;
-        }
 
         $optionVoteCounts = $this->poll->options()
             ->withCount('votes')
@@ -113,12 +97,12 @@ class PollVote extends Component
 
     /**
      * Refresh vote results — triggered automatically by the Echo broadcast event.
+     *
+     * Livewire re-renders after this listener fires, and render() fetches
+     * fresh option vote counts, so no explicit refresh is needed.
      */
     #[On('echo:poll.{poll.id},VoteRecorded')]
-    public function refreshResults(): void
-    {
-        $this->poll->refresh();
-    }
+    public function refreshResults(): void {}
 
     /**
      * Render the poll vote view with computed vote data.
@@ -139,24 +123,30 @@ class PollVote extends Component
     }
 
     /**
-     * Check if the current user or IP has already voted on this poll.
+     * Check if the authenticated user has already voted on this poll.
      */
     private function checkExistingVote(): void
     {
+        if (! Auth::check()) {
+            return;
+        }
+
         $existingVote = Vote::query()
             ->where('poll_id', $this->poll->id)
-            ->where(function ($query): void {
-                if (Auth::check()) {
-                    $query->where('user_id', Auth::id());
-                } else {
-                    $query->where('ip_address', request()->ip());
-                }
-            })
+            ->where('user_id', Auth::id())
             ->first();
 
         if ($existingVote) {
             $this->hasVoted = true;
             $this->votedOptionId = $existingVote->poll_option_id;
         }
+    }
+
+    /**
+     * Store the current poll URL as the intended redirect destination after login.
+     */
+    private function storeIntendedUrl(): void
+    {
+        session()->put('url.intended', route('polls.vote', $this->poll));
     }
 }

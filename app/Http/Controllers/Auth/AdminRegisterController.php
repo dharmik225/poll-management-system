@@ -2,18 +2,16 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Concerns\PasswordValidationRules;
-use App\Concerns\ProfileValidationRules;
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Http\Requests\Auth\AdminRegisterRequest;
+use App\Services\UserService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class AdminRegisterController extends Controller
 {
-    use PasswordValidationRules, ProfileValidationRules;
+    public function __construct(private UserService $userService) {}
 
     /**
      * Show the admin registration form.
@@ -26,22 +24,15 @@ class AdminRegisterController extends Controller
     /**
      * Handle admin registration request.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(AdminRegisterRequest $request): RedirectResponse
     {
-        $request->validate([
-            ...$this->profileRules(),
-            'password' => $this->passwordRules(),
-        ]);
+        try {
+            $user = $this->userService->create($request->validated());
+            Auth::login($user);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => $request->password,
-            'is_admin' => true,
-        ]);
-
-        Auth::login($user);
-
-        return redirect()->route('dashboard');
+            return redirect()->route('dashboard');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 }

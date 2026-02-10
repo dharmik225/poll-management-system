@@ -13,7 +13,7 @@
 
         <div class="grid gap-4 md:grid-cols-3">
             <flux:input
-                wire:model.live="search"
+                wire:model.live.debounce.300ms="search"
                 type="search"
                 :label="__('Search')"
                 :placeholder="__('Search by title or description')"
@@ -21,9 +21,9 @@
 
             <flux:select wire:model.live="statusFilter" :label="__('Status')">
                 <option value="all">{{ __('All statuses') }}</option>
-                <option value="draft">{{ __('Draft') }}</option>
-                <option value="published">{{ __('Published') }}</option>
-                <option value="archived">{{ __('Archived') }}</option>
+                @foreach (\App\Enums\PollStatus::cases() as $pollStatus)
+                    <option value="{{ $pollStatus->value }}">{{ $pollStatus->label() }}</option>
+                @endforeach
             </flux:select>
         </div>
 
@@ -122,26 +122,26 @@
 
             <div class="grid gap-4 md:grid-cols-2">
                 <div class="md:col-span-2">
-                    <flux:input wire:model.live="title" :label="__('Title')" required />
+                    <flux:input wire:model="title" :label="__('Title')" required />
                 </div>
 
                 <div class="md:col-span-2">
                     <flux:textarea
-                        wire:model.live="description"
+                        wire:model="description"
                         :label="__('Description')"
                         rows="3"
                     />
                 </div>
 
-                <flux:select wire:model.live="status" :label="__('Status')">
-                    <option value="draft">{{ __('Draft') }}</option>
-                    <option value="published">{{ __('Published') }}</option>
-                    <option value="archived">{{ __('Archived') }}</option>
+                <flux:select wire:model="status" :label="__('Status')">
+                    @foreach (\App\Enums\PollStatus::cases() as $pollStatus)
+                        <option value="{{ $pollStatus->value }}">{{ $pollStatus->label() }}</option>
+                    @endforeach
                 </flux:select>
 
                 <div>
                     <flux:input
-                        wire:model.live="expiresAt"
+                        wire:model="expiresAt"
                         type="datetime-local"
                         :label="__('Expires at')"
                     />
@@ -156,7 +156,7 @@
                         <div class="flex flex-col gap-2 md:flex-row md:items-end" wire:key="option-{{ $index }}">
                             <div class="flex-1">
                                 <flux:input
-                                    wire:model.live="options.{{ $index }}"
+                                    wire:model="options.{{ $index }}"
                                     :label="__('Option :number', ['number' => $index + 1])"
                                 />
                             </div>

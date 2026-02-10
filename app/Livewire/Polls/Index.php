@@ -3,10 +3,10 @@
 namespace App\Livewire\Polls;
 
 use App\Enums\PollStatus;
-use App\Models\Poll;
+use App\Services\PollService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -28,8 +28,10 @@ class Index extends Component
 
     public bool $showShare = false;
 
+    #[Locked]
     public ?int $editingPollId = null;
 
+    #[Locked]
     public ?int $deletingPollId = null;
 
     public string $shareUrl = '';
@@ -38,7 +40,7 @@ class Index extends Component
 
     public string $description = '';
 
-    public string $status = 'draft';
+    public string $status = PollStatus::DRAFT->value;
 
     public ?string $expiresAt = null;
 
@@ -73,12 +75,9 @@ class Index extends Component
     /**
      * Open the edit poll modal and populate with existing data.
      */
-    public function openEditForm(int $pollId): void
+    public function openEditForm(PollService $pollService, int $pollId): void
     {
-        $poll = Poll::query()
-            ->where('user_id', Auth::id())
-            ->with('options')
-            ->findOrFail($pollId);
+        $poll = $pollService->findOwnedOrFail($pollId);
 
         $this->editingPollId = $poll->id;
         $this->title = $poll->title;
@@ -125,7 +124,7 @@ class Index extends Component
     /**
      * Create or update a poll with its options.
      */
-    public function save(): void
+    public function save(PollService $pollService): void
     {
         $attributes = [];
         foreach ($this->options as $index => $option) {
@@ -142,34 +141,10 @@ class Index extends Component
         ], [], $attributes);
 
         if ($this->editingPollId) {
-            $poll = Poll::query()
-                ->where('user_id', Auth::id())
-                ->findOrFail($this->editingPollId);
-
-            $poll->update([
-                'title' => $validated['title'],
-                'description' => $validated['description'],
-                'status' => $validated['status'],
-                'expires_at' => $validated['expiresAt'],
-            ]);
+            $poll = $pollService->findOwnedOrFail($this->editingPollId);
+            $pollService->update($poll, $validated);
         } else {
-            $poll = Poll::query()->create([
-                'user_id' => Auth::id(),
-                'slug' => Str::slug($validated['title']).'-'.Str::random(5),
-                'title' => $validated['title'],
-                'description' => $validated['description'],
-                'status' => $validated['status'],
-                'expires_at' => $validated['expiresAt'],
-            ]);
-        }
-
-        $poll->options()->forceDelete();
-
-        foreach ($validated['options'] as $index => $optionText) {
-            $poll->options()->create([
-                'option' => $optionText,
-                'sort_order' => $index,
-            ]);
+            $pollService->create(Auth::id(), $validated);
         }
 
         $this->showForm = false;
@@ -179,11 +154,9 @@ class Index extends Component
     /**
      * Open the share modal with the poll's public URL.
      */
-    public function sharePoll(int $pollId): void
+    public function sharePoll(PollService $pollService, int $pollId): void
     {
-        $poll = Poll::query()
-            ->where('user_id', Auth::id())
-            ->findOrFail($pollId);
+        $poll = $pollService->findOwnedByIdOrFail($pollId);
 
         $this->shareUrl = route('polls.vote', $poll->slug);
         $this->showShare = true;
@@ -219,14 +192,11 @@ class Index extends Component
     /**
      * Delete the selected poll and its related data.
      */
-    public function delete(): void
+    public function delete(PollService $pollService): void
     {
         if ($this->deletingPollId) {
-            Poll::query()
-                ->where('user_id', Auth::id())
-                ->where('id', $this->deletingPollId)
-                ->firstOrFail()
-                ->delete();
+            $poll = $pollService->findOwnedOrFail($this->deletingPollId);
+            $pollService->delete($poll);
         }
 
         $this->showDelete = false;
@@ -245,22 +215,9 @@ class Index extends Component
     /**
      * Render the polls index view with filtered, paginated results.
      */
-    public function render(): View
+    public function render(PollService $pollService): View
     {
-        $polls = Poll::query()
-            ->where('user_id', Auth::id())
-            ->withCount(['options', 'votes'])
-            ->when($this->search, function ($query): void {
-                $query->where(function ($q): void {
-                    $q->where('title', 'like', "%{$this->search}%")
-                        ->orWhere('description', 'like', "%{$this->search}%");
-                });
-            })
-            ->when($this->statusFilter !== 'all', function ($query): void {
-                $query->where('status', $this->statusFilter);
-            })
-            ->latest()
-            ->paginate(10);
+        $polls = $pollService->getPaginated($this->search, $this->statusFilter);
 
         return view('livewire.polls.index', [
             'polls' => $polls,
@@ -275,7 +232,7 @@ class Index extends Component
         $this->editingPollId = null;
         $this->title = '';
         $this->description = '';
-        $this->status = 'draft';
+        $this->status = PollStatus::DRAFT->value;
         $this->expiresAt = null;
         $this->options = ['', ''];
         $this->resetValidation();

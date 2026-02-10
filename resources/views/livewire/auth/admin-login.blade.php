@@ -5,10 +5,8 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('admin.login.store') }}" class="flex flex-col gap-6">
             @csrf
-
-            <input type="hidden" name="admin_login" value="1">
 
             <!-- Email Address -->
             <flux:input

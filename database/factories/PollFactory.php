@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\PollStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -25,8 +26,38 @@ class PollFactory extends Factory
             'slug' => Str::slug($title).'-'.fake()->unique()->randomNumber(5),
             'title' => $title,
             'description' => fake()->optional()->paragraph(),
-            'status' => fake()->randomElement(['draft', 'published', 'archived']),
+            'status' => fake()->randomElement(PollStatus::values()),
             'expires_at' => fake()->optional()->dateTimeBetween('now', '+1 month'),
         ];
+    }
+
+    /**
+     * Set the poll status to published.
+     */
+    public function published(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => PollStatus::PUBLISHED,
+        ]);
+    }
+
+    /**
+     * Set the poll status to draft.
+     */
+    public function draft(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => PollStatus::DRAFT,
+        ]);
+    }
+
+    /**
+     * Set the poll status to archived.
+     */
+    public function archived(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => PollStatus::ARCHIVED,
+        ]);
     }
 }

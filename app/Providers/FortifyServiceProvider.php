@@ -51,7 +51,7 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
-            $isAdminLogin = $request->boolean('admin_login');
+            $isAdminLogin = $request->routeIs('admin.login.store');
 
             // Admin login page requires admin role
             if ($isAdminLogin && ! $user->isAdmin()) {

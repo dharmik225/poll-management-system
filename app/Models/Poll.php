@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\PollStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 class Poll extends Model
 {
@@ -39,6 +41,14 @@ class Poll extends Model
             'expires_at' => 'datetime',
             'status' => PollStatus::class,
         ];
+    }
+
+    /**
+     * Scope to polls owned by the currently authenticated user.
+     */
+    public function scopeOwnedByCurrentUser(Builder $query): Builder
+    {
+        return $query->where('user_id', Auth::id());
     }
 
     public function user(): BelongsTo

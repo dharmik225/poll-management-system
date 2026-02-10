@@ -24,7 +24,16 @@ class VoteFactory extends Factory
             'poll_option_id' => PollOption::factory(),
             'user_id' => User::factory(),
             'ip_address' => fake()->ipv4(),
-            'fingerprint' => fake()->uuid(),
         ];
+    }
+
+    /**
+     * Create a vote from a guest (no user_id).
+     */
+    public function guest(): static
+    {
+        return $this->state(fn (): array => [
+            'user_id' => null,
+        ]);
     }
 }

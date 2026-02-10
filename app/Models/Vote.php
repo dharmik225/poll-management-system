@@ -22,7 +22,6 @@ class Vote extends Model
         'poll_option_id',
         'user_id',
         'ip_address',
-        'fingerprint',
     ];
 
     public function poll(): BelongsTo

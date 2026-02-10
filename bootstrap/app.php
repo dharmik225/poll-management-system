@@ -18,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Redirect authenticated users away from guest-only pages (login, register)
         $middleware->redirectUsersTo(function ($request) {
-            return $request->user()?->isAdmin() ? '/admin/dashboard' : '/';
+            return $request->user()?->isAdmin() ? route('dashboard') : route('home');
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {

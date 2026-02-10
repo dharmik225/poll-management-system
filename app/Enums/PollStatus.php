@@ -86,22 +86,6 @@ enum PollStatus: string
     }
 
     /**
-     * Check if the enum is in any of the given states
-     */
-    public function isAny(self ...$statuses): bool
-    {
-        return in_array($this, $statuses, true);
-    }
-
-    /**
-     * Check if poll can be edited
-     */
-    public function canEdit(): bool
-    {
-        return $this === self::DRAFT;
-    }
-
-    /**
      * Check if poll can receive responses
      */
     public function canReceiveResponses(): bool
@@ -115,14 +99,6 @@ enum PollStatus: string
     public function canPublish(): bool
     {
         return $this === self::DRAFT;
-    }
-
-    /**
-     * Check if poll can be archived
-     */
-    public function canArchive(): bool
-    {
-        return $this->isAny(self::DRAFT, self::PUBLISHED);
     }
 
     /**

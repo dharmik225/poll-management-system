@@ -15,11 +15,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('poll_id')->constrained('polls');
             $table->foreignId('poll_option_id')->constrained('poll_options');
-            $table->foreignId('user_id')->constrained('users')->nullable();
+            $table->foreignId('user_id')->nullable()->constrained('users');
             $table->string('ip_address')->nullable();
-            $table->string('fingerprint')->nullable();
             $table->softDeletes();
             $table->timestamps();
+            $table->unique(['poll_id', 'user_id'], 'votes_poll_user_unique');
+            $table->index('ip_address');
         });
     }
 

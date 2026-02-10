@@ -16,6 +16,8 @@ Route::livewire('polls/{poll:slug}', PollVote::class)->name('polls.vote');
 Route::middleware('guest')->group(function () {
     Route::get('admin/login', fn () => view('livewire.auth.admin-login'))
         ->name('admin.login');
+    Route::post('admin/login', [\Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::class, 'store'])
+        ->name('admin.login.store');
     Route::get('admin/register', [AdminRegisterController::class, 'create'])
         ->name('admin.register');
     Route::post('admin/register', [AdminRegisterController::class, 'store'])

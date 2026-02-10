@@ -9,6 +9,12 @@ test('login screen can be rendered', function () {
     $response->assertOk();
 });
 
+test('admin login screen can be rendered', function () {
+    $response = $this->get(route('admin.login'));
+
+    $response->assertOk();
+});
+
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
@@ -19,9 +25,46 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
+        ->assertRedirect(route('home', absolute: false));
+
+    $this->assertAuthenticated();
+});
+
+test('admins can authenticate using the admin login screen', function () {
+    $user = User::factory()->admin()->create();
+
+    $response = $this->post(route('admin.login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $response
+        ->assertSessionHasNoErrors()
         ->assertRedirect(route('dashboard', absolute: false));
 
     $this->assertAuthenticated();
+});
+
+test('admins cannot authenticate via regular login screen', function () {
+    $user = User::factory()->admin()->create();
+
+    $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+});
+
+test('non-admin users cannot authenticate via admin login screen', function () {
+    $user = User::factory()->create();
+
+    $this->post(route('admin.login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
 });
 
 test('users can not authenticate with invalid password', function () {

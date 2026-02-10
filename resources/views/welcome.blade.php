@@ -84,7 +84,7 @@
                     <div class="mt-10 flex items-center gap-4">
                         @auth
                             @if(auth()->user()->isAdmin())
-                                <flux:button :href="route('polls.index')" variant="primary" size="lg" icon-trailing="arrow-right">
+                                <flux:button :href="route('polls.index')" variant="primary" icon-trailing="arrow-right">
                                     {{ __('Manage Polls') }}
                                 </flux:button>
                             @endif

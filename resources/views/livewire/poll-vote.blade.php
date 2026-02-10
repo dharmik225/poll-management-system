@@ -1,9 +1,3 @@
-<?php
-/** @var \App\Models\Poll $poll */
-/** @var \Illuminate\Database\Eloquent\Collection<\App\Models\PollOption> $options */
-/** @var int $totalVotes */
-?>
-
 <div class="relative min-h-[calc(100vh-3.5rem)]">
     {{-- Subtle branded top accent --}}
     <div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-[#0446DE]/[0.04] to-transparent dark:from-[#0446DE]/[0.06]"></div>
@@ -109,11 +103,8 @@
                         class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0446DE] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-[#0339B8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0446DE] disabled:opacity-50 dark:bg-[#0446DE] dark:hover:bg-[#3366F0] dark:focus-visible:outline-[#5B8AFF]"
                     >
                         <span wire:loading.remove wire:target="vote">{{ __('Submit Vote') }}</span>
-                        <span wire:loading wire:target="vote" class="flex items-center gap-2">
-                            <svg class="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
+                        <span wire:loading wire:target="vote" class="inline-flex items-center gap-2">
+                            <flux:icon.loading class="size-4 animate-spin inline-flex items-center justify-center" />
                             {{ __('Submitting...') }}
                         </span>
                     </button>
@@ -207,4 +198,31 @@
             </div>
         @endif
     </div>
+
+    {{-- Login Required Modal --}}
+    <flux:modal wire:model="showLoginModal" class="max-w-sm">
+        <div class="space-y-4">
+            <div class="flex items-center justify-center">
+                <span class="flex size-12 items-center justify-center rounded-full bg-[#0446DE]/10 dark:bg-[#5B8AFF]/15">
+                    <flux:icon.lock-closed class="size-6 text-[#0446DE] dark:text-[#5B8AFF]" />
+                </span>
+            </div>
+
+            <div class="space-y-2 text-center">
+                <flux:heading size="lg">{{ __('Login Required') }}</flux:heading>
+                <flux:text class="text-sm">
+                    {{ __('You need to be logged in to cast your vote. Please log in or create an account to continue.') }}
+                </flux:text>
+            </div>
+
+            <div class="flex flex-col gap-2 pt-2">
+                <flux:button variant="primary" as="a" href="{{ route('login') }}" class="w-full justify-center">
+                    {{ __('Log In') }}
+                </flux:button>
+                <flux:button variant="ghost" as="a" href="{{ route('register') }}" class="w-full justify-center">
+                    {{ __('Create Account') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>
