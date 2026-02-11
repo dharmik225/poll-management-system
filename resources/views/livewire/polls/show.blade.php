@@ -14,12 +14,6 @@
                     @endif
                 </div>
             </div>
-
-            <div class="flex items-center gap-2">
-                <flux:button variant="ghost" icon="arrow-path" wire:click="$refresh" size="sm">
-                    {{ __('Refresh') }}
-                </flux:button>
-            </div>
         </div>
 
         {{-- Summary Cards --}}

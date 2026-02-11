@@ -33,4 +33,12 @@ class PollOption extends Model
     {
         return $this->hasMany(Vote::class);
     }
+
+    public function hasVotes(): bool
+    {
+        if ($this->relationLoaded('votes')) {
+            return $this->votes->isNotEmpty();
+        }
+        return $this->votes()->exists();
+    }
 }

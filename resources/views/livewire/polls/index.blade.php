@@ -77,7 +77,6 @@
                                             <flux:menu.item
                                                 icon="pencil"
                                                 size="sm"
-                                                :disabled="$poll->votes_count > 0"
                                                 wire:click="openEditForm({{ $poll->id }})"
                                             >
                                                 {{ __('Edit') }}
@@ -165,6 +164,7 @@
                                     variant="danger"
                                     icon="trash"
                                     wire:click="removeOption({{ $index }})"
+                                    :disabled="$optionHasVotes[$index] ?? false"
                                 >
                                     {{ __('Remove') }}
                                 </flux:button>

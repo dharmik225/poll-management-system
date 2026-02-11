@@ -22,6 +22,7 @@ class Vote extends Model
         'poll_option_id',
         'user_id',
         'ip_address',
+        'voter_token',
     ];
 
     public function poll(): BelongsTo

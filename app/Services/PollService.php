@@ -19,7 +19,7 @@ class PollService
     /**
      * Create a new poll with its options for the given user.
      *
-     * @param  array{title: string, description: ?string, status: string, expiresAt: ?string, options: array<int, string>}  $data
+     * @param  array{title: string, description: ?string, status: string, expiresAt: ?string, options: array<int, string>, optionIds?: array<int, int|null>}  $data
      */
     public function create(int $userId, array $data): Poll
     {
@@ -32,7 +32,7 @@ class PollService
             'expires_at' => $data['expiresAt'],
         ]);
 
-        $this->syncOptions($poll, $data['options']);
+        $this->syncOptions($poll, $data['options'], $data['optionIds'] ?? []);
 
         return $poll;
     }
@@ -40,7 +40,7 @@ class PollService
     /**
      * Update an existing poll and its options.
      *
-     * @param  array{title: string, description: ?string, status: string, expiresAt: ?string, options: array<int, string>}  $data
+     * @param  array{title: string, description: ?string, status: string, expiresAt: ?string, options: array<int, string>, optionIds?: array<int, int|null>}  $data
      */
     public function update(Poll $poll, array $data): Poll
     {
@@ -51,7 +51,7 @@ class PollService
             'expires_at' => $data['expiresAt'],
         ]);
 
-        $this->syncOptions($poll, $data['options']);
+        $this->syncOptions($poll, $data['options'], $data['optionIds'] ?? []);
 
         return $poll;
     }
@@ -100,19 +100,34 @@ class PollService
     }
 
     /**
-     * Sync poll options: remove old ones and create the new set.
+     * Sync poll options: update existing, create new, and remove only the deleted ones.
      *
      * @param  array<int, string>  $options
+     * @param  array<int, int|null>  $optionIds
      */
-    private function syncOptions(Poll $poll, array $options): void
+    private function syncOptions(Poll $poll, array $options, array $optionIds = []): void
     {
-        $poll->options()->forceDelete();
+        $keepIds = array_filter($optionIds, fn ($id) => $id !== null);
+
+        $poll->options()
+            ->whereNotIn('id', $keepIds)
+            ->whereDoesntHave('votes')
+            ->forceDelete();
 
         foreach ($options as $index => $optionText) {
-            $poll->options()->create([
-                'option' => $optionText,
-                'sort_order' => $index,
-            ]);
+            $existingId = $optionIds[$index] ?? null;
+
+            if ($existingId) {
+                $poll->options()->where('id', $existingId)->update([
+                    'option' => $optionText,
+                    'sort_order' => $index,
+                ]);
+            } else {
+                $poll->options()->create([
+                    'option' => $optionText,
+                    'sort_order' => $index,
+                ]);
+            }
         }
     }
 }

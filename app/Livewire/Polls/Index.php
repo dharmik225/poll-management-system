@@ -47,6 +47,13 @@ class Index extends Component
     /** @var array<int, string> */
     public array $options = ['', ''];
 
+    /** @var array<int, bool> */
+    public array $optionHasVotes = [];
+
+    // for updating the option
+    #[Locked]
+    public array $optionIds = [];
+
     /**
      * Reset pagination when search term changes.
      */
@@ -78,6 +85,7 @@ class Index extends Component
     public function openEditForm(PollService $pollService, int $pollId): void
     {
         $poll = $pollService->findOwnedOrFail($pollId);
+        $poll->load(['options' => fn ($query) => $query->withCount('votes')]);
 
         $this->editingPollId = $poll->id;
         $this->title = $poll->title;
@@ -85,9 +93,12 @@ class Index extends Component
         $this->status = $poll->status->value;
         $this->expiresAt = $poll->expires_at?->format('Y-m-d\TH:i');
         $this->options = $poll->options->pluck('option')->toArray();
+        $this->optionIds = $poll->options->pluck('id')->toArray();
+        $this->optionHasVotes = $poll->options->map(fn ($option) => $option->votes_count > 0)->toArray();
 
         if (count($this->options) < 2) {
             $this->options = array_pad($this->options, 2, '');
+            $this->optionIds = array_pad($this->optionIds, 2, null);
         }
 
         $this->showForm = true;
@@ -108,17 +119,30 @@ class Index extends Component
     public function addOption(): void
     {
         $this->options[] = '';
+        $this->optionIds[] = null;
     }
 
     /**
-     * Remove an option at the given index.
+     * Remove an option at the given index. If the option has votes, it will not be removed.
      */
     public function removeOption(int $index): void
     {
-        if (count($this->options) > 2) {
-            unset($this->options[$index]);
-            $this->options = array_values($this->options);
+        if (count($this->options) <= 2) {
+            return;
         }
+
+        if ($this->optionHasVotes[$index] ?? false) {
+            return;
+        }
+
+        unset($this->options[$index]);
+        $this->options = array_values($this->options);
+
+        unset($this->optionIds[$index]);
+        $this->optionIds = array_values($this->optionIds);
+
+        unset($this->optionHasVotes[$index]);
+        $this->optionHasVotes = array_values($this->optionHasVotes);
     }
 
     /**
@@ -139,6 +163,8 @@ class Index extends Component
             'options' => ['required', 'array', 'min:2'],
             'options.*' => ['required', 'string', 'max:255'],
         ], [], $attributes);
+
+        $validated['optionIds'] = $this->optionIds;
 
         if ($this->editingPollId) {
             $poll = $pollService->findOwnedOrFail($this->editingPollId);
@@ -235,6 +261,8 @@ class Index extends Component
         $this->status = PollStatus::DRAFT->value;
         $this->expiresAt = null;
         $this->options = ['', ''];
+        $this->optionIds = [];
+        $this->optionHasVotes = [];
         $this->resetValidation();
     }
 }
