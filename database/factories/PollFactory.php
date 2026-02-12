@@ -60,4 +60,15 @@ class PollFactory extends Factory
             'status' => PollStatus::ARCHIVED,
         ]);
     }
+
+    /**
+     * Set the poll as published but already expired.
+     */
+    public function expired(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => PollStatus::PUBLISHED,
+            'expires_at' => now()->subHour(),
+        ]);
+    }
 }

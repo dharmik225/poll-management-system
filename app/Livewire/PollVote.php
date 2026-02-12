@@ -59,11 +59,11 @@ class PollVote extends Component
             ? ['poll_id' => $this->poll->id, 'user_id' => Auth::id()]
             : ['poll_id' => $this->poll->id, 'voter_token' => $voterToken];
 
-        Vote::query()->updateOrCreate($uniqueKey, [
+        $vote = Vote::updateOrCreate($uniqueKey, [
             'poll_option_id' => $this->selectedOption,
             'ip_address' => request()->ip(),
             'voter_token' => $voterToken,
-            'user_id' => Auth::id(),
+            'user_id' => Auth::id() ?? null,
         ]);
 
         $this->hasVoted = true;
@@ -105,7 +105,9 @@ class PollVote extends Component
      */
     private function ensureVoterToken(): void
     {
-        if (! $this->resolveVoterToken()) {
+        $existing = $this->resolveVoterToken();
+        // if there's no token yet, or it's not a valid uuid, issue a fresh one
+        if (! $existing || ! Str::isUuid($existing)) {
             Cookie::queue('voter_token', Str::uuid()->toString(), 60 * 24 * 365);
         }
     }
