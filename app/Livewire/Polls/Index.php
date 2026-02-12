@@ -3,8 +3,10 @@
 namespace App\Livewire\Polls;
 
 use App\Enums\PollStatus;
+use App\Models\Poll;
 use App\Services\PollService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
@@ -14,7 +16,7 @@ use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination;
+    use AuthorizesRequests, WithPagination;
 
     #[Url]
     public string $search = '';
@@ -48,6 +50,7 @@ class Index extends Component
     public array $options = ['', ''];
 
     /** @var array<int, bool> */
+    #[Locked]
     public array $optionHasVotes = [];
 
     // for updating the option
@@ -85,6 +88,8 @@ class Index extends Component
     public function openEditForm(PollService $pollService, int $pollId): void
     {
         $poll = $pollService->findOwnedOrFail($pollId);
+        $this->authorize('update', $poll);
+
         $poll->load(['options' => fn ($query) => $query->withCount('votes')]);
 
         $this->editingPollId = $poll->id;
@@ -167,9 +172,11 @@ class Index extends Component
         $validated['optionIds'] = $this->optionIds;
 
         if ($this->editingPollId) {
-            $poll = $pollService->findOwnedOrFail($this->editingPollId);
+            $poll = $pollService->findOwnedByIdOrFail($this->editingPollId);
+            $this->authorize('update', $poll);
             $pollService->update($poll, $validated);
         } else {
+            $this->authorize('create', Poll::class);
             $pollService->create(Auth::id(), $validated);
         }
 
@@ -183,6 +190,7 @@ class Index extends Component
     public function sharePoll(PollService $pollService, int $pollId): void
     {
         $poll = $pollService->findOwnedByIdOrFail($pollId);
+        $this->authorize('share', $poll);
 
         $this->shareUrl = route('polls.vote', $poll->slug);
         $this->showShare = true;
@@ -200,8 +208,11 @@ class Index extends Component
     /**
      * Show the delete confirmation modal.
      */
-    public function confirmDelete(int $pollId): void
+    public function confirmDelete(PollService $pollService, int $pollId): void
     {
+        $poll = $pollService->findOwnedByIdOrFail($pollId);
+        $this->authorize('delete', $poll);
+
         $this->deletingPollId = $pollId;
         $this->showDelete = true;
     }
@@ -221,7 +232,8 @@ class Index extends Component
     public function delete(PollService $pollService): void
     {
         if ($this->deletingPollId) {
-            $poll = $pollService->findOwnedOrFail($this->deletingPollId);
+            $poll = $pollService->findOwnedByIdOrFail($this->deletingPollId);
+            $this->authorize('delete', $poll);
             $pollService->delete($poll);
         }
 
@@ -233,14 +245,8 @@ class Index extends Component
      * Refresh the polls list when any vote is broadcast via WebSocket.
      */
     #[On('echo:polls,VoteRecorded')]
-    public function refreshPolls(): void
-    {
-        // Livewire automatically calls render() after this method.
-    }
+    public function refreshPolls(): void {}
 
-    /**
-     * Render the polls index view with filtered, paginated results.
-     */
     public function render(PollService $pollService): View
     {
         $polls = $pollService->getPaginated($this->search, $this->statusFilter);

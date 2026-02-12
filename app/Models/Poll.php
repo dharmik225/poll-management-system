@@ -65,4 +65,14 @@ class Poll extends Model
     {
         return $this->hasMany(Vote::class);
     }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
+    public function isAcceptingVotes(): bool
+    {
+        return $this->status->canReceiveResponses() && ! $this->isExpired();
+    }
 }

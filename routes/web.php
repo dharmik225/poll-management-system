@@ -10,7 +10,9 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::livewire('polls/{poll:slug}', PollVote::class)->name('polls.vote');
+Route::livewire('polls/{poll:slug}', PollVote::class)
+    ->middleware('throttle:60,1')
+    ->name('polls.vote');
 
 // Admin auth routes (guest only)
 Route::middleware('guest')->group(function () {

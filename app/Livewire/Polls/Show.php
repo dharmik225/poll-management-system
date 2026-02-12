@@ -4,7 +4,7 @@ namespace App\Livewire\Polls;
 
 use App\Models\Poll;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -12,7 +12,7 @@ use Livewire\WithPagination;
 
 class Show extends Component
 {
-    use WithPagination;
+    use AuthorizesRequests, WithPagination;
 
     public Poll $poll;
 
@@ -22,12 +22,9 @@ class Show extends Component
     #[Url]
     public string $optionFilter = 'all';
 
-    /**
-     * Mount the component and verify ownership.
-     */
     public function mount(Poll $poll): void
     {
-        abort_unless($poll->user_id === Auth::id(), 403);
+        $this->authorize('viewVoters', $poll);
 
         $this->poll = $poll;
     }
