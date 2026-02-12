@@ -10,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -27,7 +28,7 @@ class PollVote extends Component
 
     public function mount(Poll $poll): void
     {
-        if (! $poll->status->canReceiveResponses()) {
+        if (! $poll->isAcceptingVotes()) {
             abort(404);
         }
 
@@ -41,15 +42,23 @@ class PollVote extends Component
      */
     public function vote(): void
     {
-        $this->validate([
-            'selectedOption' => ['required', 'integer', 'exists:poll_options,id'],
-        ]);
+        $this->poll->refresh();
 
-        if ($this->hasVoted && $this->votedOptionId === $this->selectedOption) {
+        if (! $this->poll->isAcceptingVotes()) {
+            $this->addError('selectedOption', __('This poll is no longer accepting votes.'));
+
             return;
         }
 
-        if (! $this->poll->options()->where('id', $this->selectedOption)->exists()) {
+        $this->validate([
+            'selectedOption' => [
+                'required',
+                'integer',
+                Rule::exists('poll_options', 'id')->where('poll_id', $this->poll->id),
+            ],
+        ]);
+
+        if ($this->hasVoted && $this->votedOptionId === $this->selectedOption) {
             return;
         }
 
@@ -59,11 +68,11 @@ class PollVote extends Component
             ? ['poll_id' => $this->poll->id, 'user_id' => Auth::id()]
             : ['poll_id' => $this->poll->id, 'voter_token' => $voterToken];
 
-        $vote = Vote::updateOrCreate($uniqueKey, [
+        Vote::updateOrCreate($uniqueKey, [
             'poll_option_id' => $this->selectedOption,
             'ip_address' => request()->ip(),
             'voter_token' => $voterToken,
-            'user_id' => Auth::id() ?? null,
+            'user_id' => Auth::id(),
         ]);
 
         $this->hasVoted = true;
@@ -148,6 +157,7 @@ class PollVote extends Component
                 fn ($query) => $query->where('user_id', Auth::id()),
                 fn ($query) => $query->where('voter_token', $this->resolveVoterToken()),
             )
+            ->select('poll_option_id')
             ->first();
 
         if ($existingVote) {
@@ -163,6 +173,7 @@ class PollVote extends Component
     private function broadcastVoteCounts(): void
     {
         $optionVoteCounts = $this->poll->options()
+            ->select('id')
             ->withCount('votes')
             ->get()
             ->map(fn (PollOption $option): array => [
