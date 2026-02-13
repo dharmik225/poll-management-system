@@ -96,6 +96,9 @@ php artisan test
 
 # With coverage
 php artisan test --coverage
+
+# Load testing with k6
+k6 run tests/k6/load-test.js
 ```
 
 ## Production Build
