@@ -20,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo(function ($request) {
             return $request->user()?->isAdmin() ? route('dashboard') : route('home');
         });
+
+        // Exclude test routes from CSRF verification
+        $middleware->validateCsrfTokens(except: [
+            'poll-vote-test/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -7,6 +7,7 @@ use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\Vote;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
@@ -64,16 +65,15 @@ class PollVote extends Component
 
         $voterToken = $this->resolveVoterToken();
 
-        $uniqueKey = Auth::check()
-            ? ['poll_id' => $this->poll->id, 'user_id' => Auth::id()]
-            : ['poll_id' => $this->poll->id, 'voter_token' => $voterToken];
-
-        Vote::updateOrCreate($uniqueKey, [
-            'poll_option_id' => $this->selectedOption,
-            'ip_address' => request()->ip(),
-            'voter_token' => $voterToken,
-            'user_id' => Auth::id(),
-        ]);
+        try {
+            $this->createVote($voterToken);
+        } catch (QueryException $e) {
+            if ($this->isDuplicateKeyError($e)) {
+                $this->updateExistingVote($voterToken);
+            } else {
+                throw $e;
+            }
+        }
 
         $this->hasVoted = true;
         $this->votedOptionId = $this->selectedOption;
@@ -165,6 +165,49 @@ class PollVote extends Component
             $this->votedOptionId = $existingVote->poll_option_id;
             $this->selectedOption = $existingVote->poll_option_id;
         }
+    }
+
+    /**
+     * Insert a new vote record.
+     */
+    private function createVote(?string $voterToken): void
+    {
+        Vote::create([
+            'poll_id' => $this->poll->id,
+            'poll_option_id' => $this->selectedOption,
+            'user_id' => Auth::id(),
+            'voter_token' => $voterToken,
+            'ip_address' => request()->ip(),
+        ]);
+    }
+
+    /**
+     * Update an existing vote when user changes their choice.
+     */
+    private function updateExistingVote(?string $voterToken): void
+    {
+        Vote::where('poll_id', $this->poll->id)
+            ->when(
+                Auth::check(),
+                fn ($query) => $query->where('user_id', Auth::id()),
+                fn ($query) => $query->where('voter_token', $voterToken)
+            )
+            ->update([
+                'poll_option_id' => $this->selectedOption,
+                'ip_address' => request()->ip(),
+            ]);
+    }
+
+    /**
+     * Check if the exception is a duplicate key constraint violation.
+     */
+    private function isDuplicateKeyError(QueryException $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'UNIQUE constraint')
+            || str_contains($message, 'Duplicate entry')
+            || str_contains($message, 'unique constraint');
     }
 
     /**
