@@ -47,7 +47,7 @@
                     {{ $hasVoted ? __('Change your vote by selecting a different option') : __('Select an option to cast your vote') }}
                 </p>
 
-                <div class="space-y-2.5" x-data="{ selected: @entangle('selectedOption') }">
+                <div class="space-y-2.5" x-data="{ selected: $wire.entangle('selectedOption') }">
                     @foreach ($options as $option)
                         <div
                             wire:key="option-{{ $option->id }}"
